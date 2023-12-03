@@ -33,6 +33,12 @@ type VerifyResult struct {
 }
 
 func (nc NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if result := isAllow(&r.Header); !result {
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode("")
+		return
+	}
+
 	log.Println("new challenge start ", r.Header)
 
 	mac, invoice, err := nc.mint.MintLSAT(context.Background(), lsat.Service{
@@ -67,6 +73,12 @@ func (nc NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 }
 
 func (v VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if result := isAllow(&r.Header); !result {
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode("")
+		return
+	}
+
 	log.Println("verify start ", r.Header)
 
 	res := &VerifyResult{
@@ -108,4 +120,13 @@ func verify(header *http.Header, v *VerifyHandler) error {
 		return fmt.Errorf("deny: %v", err)
 	}
 	return nil
+}
+
+func isAllow(h *http.Header) bool {
+	for _, v := range ALLOW_LIST {
+		if v == h.Get("Origin") {
+			return true
+		}
+	}
+	return false
 }
