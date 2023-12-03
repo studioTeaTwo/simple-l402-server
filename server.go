@@ -55,15 +55,26 @@ func main() {
 	handler := c.Handler(router)
 
 	log.Println("start server")
-	log.Fatal(http.ListenAndServe(":8180", handler))
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }
 
 func connectLnc() (*mint.Mint, error) {
 	errChan := make(chan error)
 
-	fmt.Println(btcutil.AppDataDir("aperture", false))
+	appDataDir := btcutil.AppDataDir("aperture", false)
+	fmt.Println(appDataDir)
 
-	dbCfg := aperturedb.SqliteConfig{SkipMigrations: false, DatabaseFileName: btcutil.AppDataDir("aperture", false) + "/aperture.db"}
+	fileInfo, err := os.Lstat(appDataDir)
+	if err != nil {
+		fileMode := fileInfo.Mode()
+		unixPerms := fileMode & os.ModePerm
+		if err := os.Mkdir(appDataDir, unixPerms); err != nil {
+			return nil, fmt.Errorf("unable to create directory "+
+				"mkdir: %w", err)
+		}
+	}
+
+	dbCfg := aperturedb.SqliteConfig{SkipMigrations: false, DatabaseFileName: appDataDir + "/aperture.db"}
 	db, err := aperturedb.NewSqliteStore(&dbCfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create store "+
