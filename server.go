@@ -3,18 +3,20 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/Roasbeef/btcutil"
 	"github.com/lightninglabs/aperture/aperturedb"
 	"github.com/lightninglabs/aperture/challenger"
 	"github.com/lightninglabs/aperture/lnc"
 	"github.com/lightninglabs/aperture/lsat"
 	"github.com/lightninglabs/aperture/mint"
+	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/lnrpc"
-	"github.com/roasbeef/btcutil"
+	"github.com/lightningnetwork/lnd/signal"
 	"github.com/rs/cors"
 )
 
@@ -30,20 +32,51 @@ var (
 	LNC_MAILBOX   = os.Getenv("LNC_MAILBOX")
 
 	ALLOW_LIST = []string{"http://localhost:5173", "http://localhost:8080", "https://*-studioteatwo.vercel.app", DEV_FRONT_URL, PROD_FRONT_URL}
+
+	appDataDir                    = btcutil.AppDataDir("l402", false)
+	defaultLogLevel               = "debug"
+	defaultLogFilename            = "l402.log"
+	defaultMaxLogFiles            = 3
+	defaultMaxLogFileSize         = 10
+	defaultSqliteDatabaseFileName = "l402.db"
 )
 
 func main() {
 	if LNC_PASSPRASE == "" || LNC_MAILBOX == "" {
-		log.Fatal("not enough to ENV:", LNC_PASSPRASE, LNC_MAILBOX)
+		log.Critical("not enough to ENV:", LNC_PASSPRASE, LNC_MAILBOX)
 	}
 
-	mint, err := connectLnc()
+	// put at first.
+	interceptor, err := signal.Intercept()
 	if err != nil {
-		log.Fatal(err)
+		log.Critical(err)
+	}
+
+	// set logs
+	SetupLoggers(logWriter, interceptor)
+	log.Info(appDataDir)
+	logFile := filepath.Join(appDataDir, defaultLogFilename)
+	err = logWriter.InitLogRotator(
+		logFile, defaultMaxLogFileSize, defaultMaxLogFiles,
+	)
+	if err != nil {
+		log.Critical(err)
+	}
+	err = build.ParseAndSetDebugLevels(defaultLogLevel, logWriter)
+	if err != nil {
+		log.Critical(err)
+	}
+
+	// Connect to LNC
+	errChan := make(chan error)
+	mint, err := connectLnc(errChan)
+	if err != nil {
+		log.Critical(err)
 	}
 	nch := &NewChallengeHandler{mint}
 	vh := &VerifyHandler{mint}
 
+	// Set up server
 	router := http.NewServeMux()
 	router.Handle("/createInvoice", nch)
 	router.Handle("/verify", vh)
@@ -56,16 +89,18 @@ func main() {
 	})
 	handler := c.Handler(router)
 
-	log.Println("start server")
-	log.Fatal(http.ListenAndServe(":8180", handler))
+	log.Info("start server")
+	log.Critical(http.ListenAndServe(":8180", handler))
+
+	select {
+	case <-interceptor.ShutdownChannel():
+		log.Info("Received interrupt signal, shutting down aperture.")
+	case err := <-errChan:
+		log.Errorf("Error while running aperture: %v", err)
+	}
 }
 
-func connectLnc() (*mint.Mint, error) {
-	errChan := make(chan error)
-
-	appDataDir := btcutil.AppDataDir("aperture", false)
-	fmt.Println(appDataDir)
-
+func connectLnc(errChan chan error) (*mint.Mint, error) {
 	fileInfo, err := os.Lstat(appDataDir)
 	if err != nil {
 		fileMode := fileInfo.Mode()
@@ -76,7 +111,7 @@ func connectLnc() (*mint.Mint, error) {
 		}
 	}
 
-	dbCfg := aperturedb.SqliteConfig{SkipMigrations: false, DatabaseFileName: appDataDir + "/aperture.db"}
+	dbCfg := aperturedb.SqliteConfig{SkipMigrations: false, DatabaseFileName: appDataDir + "/" + defaultSqliteDatabaseFileName}
 	db, err := aperturedb.NewSqliteStore(&dbCfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create store "+
@@ -112,7 +147,7 @@ func connectLnc() (*mint.Mint, error) {
 		}, nil
 	}
 
-	log.Println("LNC challlenge strat")
+	log.Info("LNC challlenge strat")
 	challenger, err := challenger.NewLNCChallenger(
 		session, lncStore, genInvoiceReq, errChan,
 	)
@@ -120,7 +155,7 @@ func connectLnc() (*mint.Mint, error) {
 		return nil, fmt.Errorf("unable to start lnc "+
 			"challenger: %w", err)
 	}
-	log.Println("LNC challlenge succeeded ", challenger)
+	log.Info("LNC challlenge succeeded ", challenger)
 
 	mint := mint.New(&mint.Config{
 		Secrets:    secretStore,

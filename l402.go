@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/lightninglabs/aperture/lsat"
@@ -34,13 +33,13 @@ func (nc *NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Println("new challenge start ", r.Header)
+	log.Infof("new challenge start: %#v", r.Header)
 
 	res, macaroon, invoice := nc.mintAndFormat()
 	if !res.Result {
-		log.Println("new challenge failed: ", res.Reason)
+		log.Errorf("new challenge failed: %#v", res.Reason)
 	} else {
-		log.Println("new challenge succeeded ", macaroon, invoice)
+		log.Info("new challenge succeeded ", macaroon, invoice)
 
 		challenge := "L402 macaroon=" + macaroon + " invoice=" + invoice
 		w.Header().Set("WWW-Authenticate", challenge)
@@ -49,7 +48,7 @@ func (nc *NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(http.StatusPaymentRequired)
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 }
 
@@ -60,7 +59,7 @@ func (v *VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("verify start ", r.Header)
+	log.Infof("verify start: %#v", r.Header)
 
 	res := &Result{
 		Result: true,
@@ -71,7 +70,7 @@ func (v *VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		res.Result = false
 		res.Reason = err.Error()
 	}
-	log.Println("verify end ", res)
+	log.Infof("verify end: %#v", res)
 
 	status := http.StatusOK
 	if err != nil {
@@ -81,12 +80,12 @@ func (v *VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(res); err != nil {
-		log.Println(err)
+		log.Error(err)
 	}
 }
 
-func (nc NewChallengeHandler) mintAndFormat() (*Result, string, string) {
-	res := &Result{
+func (nc NewChallengeHandler) mintAndFormat() (res *Result, macaroon string, invoice string) {
+	res = &Result{
 		Result: true,
 		Reason: "",
 	}
@@ -97,28 +96,28 @@ func (nc NewChallengeHandler) mintAndFormat() (*Result, string, string) {
 		Price: 1,
 	})
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		res.Result = false
 		res.Reason = err.Error()
 		return res, "", ""
 	}
 
-	log.Println("macaroorn ", mac)
+	log.Infof("macaroorn ", mac)
 	macBytes, err := mac.MarshalBinary()
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		res.Result = false
 		res.Reason = err.Error()
 		return res, "", ""
 	}
 
-	macaroon := base64.StdEncoding.EncodeToString(macBytes)
+	macaroon = base64.StdEncoding.EncodeToString(macBytes)
 	return res, macaroon, invoice
 }
 
 func verify(header *http.Header, v *VerifyHandler) error {
 	mac, preimage, err := lsat.FromHeader(header)
-	log.Println("header", header.Get("Authorization"))
+	log.Infof("header %#v", header.Get("Authorization"))
 	if err != nil {
 		return fmt.Errorf("deny: %v", err)
 	}

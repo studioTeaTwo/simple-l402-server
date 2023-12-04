@@ -1,12 +1,12 @@
 package main
 
+// mock of aperture/services.go
+
 import (
 	"context"
 
 	"github.com/lightninglabs/aperture/lsat"
 )
-
-// mock of aperture/services.go
 
 type mockServiceLimiter struct {
 	capabilities map[lsat.Service]lsat.Caveat
