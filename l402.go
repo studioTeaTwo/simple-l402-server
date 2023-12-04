@@ -22,17 +22,12 @@ type VerifyHandler struct {
 	mint *mint.Mint
 }
 
-type NewChallengeResult struct {
-	Macaroon string `json:"macaroon"`
-	Invoice  string `json:"invoice"`
-}
-
-type VerifyResult struct {
+type Result struct {
 	Result bool   `json:"result"`
 	Reason string `json:"reason"`
 }
 
-func (nc NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (nc *NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if result := isAllow(&r.Header); !result {
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode("")
@@ -41,28 +36,14 @@ func (nc NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 
 	log.Println("new challenge start ", r.Header)
 
-	mac, invoice, err := nc.mint.MintLSAT(context.Background(), lsat.Service{
-		Name:  SERVICE_NAME,
-		Tier:  lsat.BaseTier,
-		Price: 1,
-	})
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	res, macaroon, invoice := nc.mintAndFormat()
+	if !res.Result {
+		log.Println("new challenge failed: ", res.Reason)
+	} else {
+		log.Println("new challenge succeeded ", macaroon, invoice)
 
-	log.Println("macaroorn ", mac)
-	macBytes, err := mac.MarshalBinary()
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	macaroon := base64.StdEncoding.EncodeToString(macBytes)
-
-	log.Println("new challenge succeeded ", macaroon, invoice)
-	res := &NewChallengeResult{
-		Macaroon: macaroon,
-		Invoice:  invoice,
+		challenge := "L402 macaroon=" + macaroon + " invoice=" + invoice
+		w.Header().Set("WWW-Authenticate", challenge)
 	}
 
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -72,7 +53,7 @@ func (nc NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (v VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (v *VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if result := isAllow(&r.Header); !result {
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode("")
@@ -81,11 +62,11 @@ func (v VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("verify start ", r.Header)
 
-	res := &VerifyResult{
+	res := &Result{
 		Result: true,
 		Reason: "",
 	}
-	err := verify(&r.Header, &v)
+	err := verify(&r.Header, v)
 	if err != nil {
 		res.Result = false
 		res.Reason = err.Error()
@@ -102,6 +83,37 @@ func (v VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(res); err != nil {
 		log.Println(err)
 	}
+}
+
+func (nc NewChallengeHandler) mintAndFormat() (*Result, string, string) {
+	res := &Result{
+		Result: true,
+		Reason: "",
+	}
+
+	mac, invoice, err := nc.mint.MintLSAT(context.Background(), lsat.Service{
+		Name:  SERVICE_NAME,
+		Tier:  lsat.BaseTier,
+		Price: 1,
+	})
+	if err != nil {
+		log.Println(err)
+		res.Result = false
+		res.Reason = err.Error()
+		return res, "", ""
+	}
+
+	log.Println("macaroorn ", mac)
+	macBytes, err := mac.MarshalBinary()
+	if err != nil {
+		log.Println(err)
+		res.Result = false
+		res.Reason = err.Error()
+		return res, "", ""
+	}
+
+	macaroon := base64.StdEncoding.EncodeToString(macBytes)
+	return res, macaroon, invoice
 }
 
 func verify(header *http.Header, v *VerifyHandler) error {
