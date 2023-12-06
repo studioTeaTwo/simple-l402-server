@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/Roasbeef/btcutil"
-	"github.com/lightninglabs/aperture/aperturedb"
-	"github.com/lightninglabs/aperture/challenger"
-	"github.com/lightninglabs/aperture/lnc"
-	"github.com/lightninglabs/aperture/lsat"
-	"github.com/lightninglabs/aperture/mint"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/rs/cors"
+	"github.com/studioTeaTwo/aperture/aperturedb"
+	"github.com/studioTeaTwo/aperture/challenger"
+	"github.com/studioTeaTwo/aperture/lnc"
+	"github.com/studioTeaTwo/aperture/lsat"
+	"github.com/studioTeaTwo/aperture/mint"
 )
 
 const (
