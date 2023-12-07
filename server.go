@@ -42,14 +42,13 @@ var (
 )
 
 func main() {
-	if LNC_PASSPRASE == "" || LNC_MAILBOX == "" {
-		log.Critical("not enough to ENV:", LNC_PASSPRASE, LNC_MAILBOX)
-	}
+	// TODO: goroutine
 
 	// put at first.
 	interceptor, err := signal.Intercept()
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 
 	// set logs
@@ -61,10 +60,12 @@ func main() {
 	)
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 	err = build.ParseAndSetDebugLevels(defaultLogLevel, logWriter)
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 
 	// Connect to LNC
@@ -72,6 +73,7 @@ func main() {
 	mint, err := connectLnc(errChan)
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 	nch := &NewChallengeHandler{mint}
 	vh := &VerifyHandler{mint}
@@ -90,13 +92,15 @@ func main() {
 	handler := c.Handler(router)
 
 	log.Info("start server")
-	log.Critical(http.ListenAndServe(":8180", handler))
+	http.ListenAndServe(":8180", handler)
 
 	select {
 	case <-interceptor.ShutdownChannel():
-		log.Info("Received interrupt signal, shutting down aperture.")
+		log.Critical("Received interrupt signal, shutting down aperture.")
+		os.Exit(1)
 	case err := <-errChan:
-		log.Errorf("Error while running aperture: %v", err)
+		log.Critical("Error while running aperture: %v", err)
+		os.Exit(1)
 	}
 }
 
@@ -140,9 +144,9 @@ func connectLnc(errChan chan error) (*mint.Mint, error) {
 			"session: %w", err)
 	}
 
-	genInvoiceReq := func(price int64) (*lnrpc.Invoice, error) {
+	genInvoiceReq := func(price int64, memo mint.MemoParam) (*lnrpc.Invoice, error) {
 		return &lnrpc.Invoice{
-			Memo:  SERVICE_NAME,
+			Memo:  SERVICE_NAME + " slug=" + memo.Slug + " pubkey=" + memo.NostrPubkey,
 			Value: price,
 		}, nil
 	}

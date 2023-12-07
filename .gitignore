@@ -2,4 +2,6 @@
 memo.md
 *.log
 
+# golang
 vendor/
+simple-l402-server

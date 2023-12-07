@@ -6,7 +6,7 @@ require (
 	github.com/Roasbeef/btcutil v0.0.0-20180406014609-dfb640c57141
 	github.com/lightninglabs/aperture v0.3.1-beta
 	github.com/lightningnetwork/lnd v0.16.0-beta
-	github.com/studioTeaTwo/aperture v0.0.0
+	github.com/studioTeaTwo/aperture v0.0.1
 )
 
 require (

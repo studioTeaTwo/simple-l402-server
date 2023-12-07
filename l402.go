@@ -34,9 +34,22 @@ func (nc *NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Infof("new challenge start: %#v", r.Header)
+	var p mint.MemoParam
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		log.Errorf("invalid parameters: %#v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// TODO: validate more
+	if p.Slug == "" || p.NostrPubkey == "" {
+		log.Errorf("invalid parameters: %#v", p)
+		http.Error(w, "invalid parameters", http.StatusBadRequest)
+		return
+	}
 
-	res, macaroon, invoice := nc.mintAndFormat()
+	log.Infof("new challenge start: %#v", r.Header, p)
+
+	res, macaroon, invoice := nc.mintAndFormat(p)
 	if !res.Result {
 		log.Errorf("new challenge failed: %#v", res.Reason)
 	} else {
@@ -85,13 +98,13 @@ func (v *VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (nc NewChallengeHandler) mintAndFormat() (res *Result, macaroon string, invoice string) {
+func (nc NewChallengeHandler) mintAndFormat(memo mint.MemoParam) (res *Result, macaroon string, invoice string) {
 	res = &Result{
 		Result: true,
 		Reason: "",
 	}
 
-	mac, invoice, err := nc.mint.MintLSAT(context.Background(), lsat.Service{
+	mac, invoice, err := nc.mint.MintLSAT(context.Background(), memo, lsat.Service{
 		Name:  SERVICE_NAME,
 		Tier:  lsat.BaseTier,
 		Price: 1,
