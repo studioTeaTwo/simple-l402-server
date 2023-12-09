@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/lightninglabs/aperture/lsat"
 	"github.com/lightninglabs/aperture/mint"
@@ -135,7 +136,11 @@ func verify(header *http.Header, v *VerifyHandler) error {
 
 func isAllow(h *http.Header) bool {
 	for _, v := range ALLOW_LIST {
-		if v == h.Get("Origin") {
+		if v == "" {
+			continue
+		}
+		r := regexp.MustCompile(v)
+		if matched := r.MatchString(h.Get("Origin")); matched {
 			return true
 		}
 	}

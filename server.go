@@ -31,7 +31,7 @@ var (
 	LNC_PASSPRASE = os.Getenv("LNC_PASSPRASE")
 	LNC_MAILBOX   = os.Getenv("LNC_MAILBOX")
 
-	ALLOW_LIST = []string{"http://localhost:5173", "http://localhost:8080", "https://*-studioteatwo.vercel.app", DEV_FRONT_URL, PROD_FRONT_URL}
+	ALLOW_LIST = []string{"http://localhost:5173", "http://localhost:8080", `https://\S*-studioteatwo.vercel.app`, DEV_FRONT_URL, PROD_FRONT_URL}
 
 	appDataDir                    = btcutil.AppDataDir("l402", false)
 	defaultLogLevel               = "debug"
