@@ -18,6 +18,7 @@ import (
 	"github.com/studioTeaTwo/aperture/lnc"
 	"github.com/studioTeaTwo/aperture/lsat"
 	"github.com/studioTeaTwo/aperture/mint"
+	"github.com/studioTeaTwo/aperture/nostr"
 )
 
 const (
@@ -27,11 +28,13 @@ const (
 var (
 	DEV_FRONT_URL  = os.Getenv("DEV_FRONT_URL")
 	PROD_FRONT_URL = os.Getenv("PROD_FRONT_URL")
+	ALLOW_LIST     = []string{"http://localhost:5173", "http://localhost:8080", `https://\S*-studioteatwo.vercel.app`, DEV_FRONT_URL, PROD_FRONT_URL}
 
 	LNC_PASSPRASE = os.Getenv("LNC_PASSPRASE")
 	LNC_MAILBOX   = os.Getenv("LNC_MAILBOX")
 
-	ALLOW_LIST = []string{"http://localhost:5173", "http://localhost:8080", `https://\S*-studioteatwo.vercel.app`, DEV_FRONT_URL, PROD_FRONT_URL}
+	N_SEC_KEY = os.Getenv("N_SEC_KEY")
+	relayList = []string{"wss://relay.damus.io", "wss://relay.snort.social", "wss://relay.primal.net", "wss://yabu.me", "wss://r.kojira.io"} // combine with user's relay list
 
 	appDataDir                    = btcutil.AppDataDir("l402", false)
 	defaultLogLevel               = "debug"
@@ -70,7 +73,7 @@ func main() {
 
 	// Connect to LNC
 	errChan := make(chan error)
-	mint, err := connectLnc(errChan)
+	mint, err := setup(errChan)
 	if err != nil {
 		log.Critical(err)
 		os.Exit(1)
@@ -104,7 +107,7 @@ func main() {
 	}
 }
 
-func connectLnc(errChan chan error) (*mint.Mint, error) {
+func setup(errChan chan error) (*mint.Mint, error) {
 	fileInfo, err := os.Lstat(appDataDir)
 	if err != nil {
 		fileMode := fileInfo.Mode()
@@ -144,16 +147,21 @@ func connectLnc(errChan chan error) (*mint.Mint, error) {
 			"session: %w", err)
 	}
 
-	genInvoiceReq := func(price int64, memo mint.MemoParam) (*lnrpc.Invoice, error) {
+	genInvoiceReq := func(price int64, params *nostr.NostrPublishParam) (*lnrpc.Invoice, error) {
 		return &lnrpc.Invoice{
-			Memo:  SERVICE_NAME + " slug=" + memo.Slug + " pubkey=" + memo.NostrPubkey,
-			Value: price,
+			Value:  price,
+			Expiry: 2592000, // 30 days
 		}, nil
+	}
+
+	nostrClient, err := nostr.NewNostrClient(N_SEC_KEY, SERVICE_NAME, relayList)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create nostr client: %w", err)
 	}
 
 	log.Info("LNC challlenge strat")
 	challenger, err := challenger.NewLNCChallenger(
-		session, lncStore, genInvoiceReq, errChan,
+		session, lncStore, genInvoiceReq, nostrClient, errChan,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start lnc "+

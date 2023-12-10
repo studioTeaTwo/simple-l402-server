@@ -4,9 +4,8 @@ go 1.21.4
 
 require (
 	github.com/Roasbeef/btcutil v0.0.0-20180406014609-dfb640c57141
-	github.com/lightninglabs/aperture v0.3.1-beta
 	github.com/lightningnetwork/lnd v0.16.0-beta
-	github.com/studioTeaTwo/aperture v0.0.1
+	github.com/studioTeaTwo/aperture v0.0.1-20231210133622-e28dba0cb7e2
 )
 
 require (
@@ -14,14 +13,27 @@ require (
 	github.com/NebulousLabs/go-upnp v0.0.0-20180202185039-29b680b06c82 // indirect
 	github.com/btcsuite/golangcrypto v0.0.0-20150304025918-53f62d9b43e8 // indirect
 	github.com/coreos/go-systemd v0.0.0-20190719114852-fd7a80b32e1f // indirect
+	github.com/dgraph-io/ristretto v0.1.1 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
+	github.com/gobwas/httphead v0.1.0 // indirect
+	github.com/gobwas/pool v0.2.1 // indirect
+	github.com/gobwas/ws v1.2.0 // indirect
+	github.com/golang/glog v1.1.2 // indirect
 	github.com/jackpal/gateway v1.0.5 // indirect
 	github.com/jackpal/go-nat-pmp v0.0.0-20170405195558-28a68d0c24ad // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/lightningnetwork/lightning-onion v1.2.1-0.20221202012345-ca23184850a1 // indirect
 	github.com/lightningnetwork/lnd/cert v1.2.1 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/nbd-wtf/go-nostr v0.26.4 // indirect
+	github.com/nxadm/tail v1.4.8 // indirect
+	github.com/puzpuzpuz/xsync/v2 v2.5.1 // indirect
 	github.com/roasbeef/btcd v0.0.0-20180418012700-a03db407e40d // indirect
 	github.com/roasbeef/btcutil v0.0.0-20180406014609-dfb640c57141 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/tv42/zbase32 v0.0.0-20160707012821-501572607d02 // indirect
 	go.opentelemetry.io/otel/metric v1.21.0 // indirect
 )
@@ -56,8 +68,8 @@ require (
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
-	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
+	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/decred/dcrd/lru v1.0.0 // indirect
 	github.com/docker/cli v20.10.17+incompatible // indirect
 	github.com/docker/docker v24.0.7+incompatible // indirect
@@ -173,7 +185,7 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	go.uber.org/zap v1.17.0 // indirect
 	golang.org/x/crypto v0.15.0 // indirect
-	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0 // indirect
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 	golang.org/x/mod v0.10.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
