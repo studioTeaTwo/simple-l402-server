@@ -9,15 +9,16 @@ import (
 	"time"
 
 	"github.com/Roasbeef/btcutil"
-	"github.com/lightninglabs/aperture/aperturedb"
-	"github.com/lightninglabs/aperture/challenger"
-	"github.com/lightninglabs/aperture/lnc"
-	"github.com/lightninglabs/aperture/lsat"
-	"github.com/lightninglabs/aperture/mint"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/signal"
 	"github.com/rs/cors"
+	"github.com/studioTeaTwo/aperture/aperturedb"
+	"github.com/studioTeaTwo/aperture/challenger"
+	"github.com/studioTeaTwo/aperture/lnc"
+	"github.com/studioTeaTwo/aperture/lsat"
+	"github.com/studioTeaTwo/aperture/mint"
+	"github.com/studioTeaTwo/aperture/nostr"
 )
 
 const (
@@ -27,11 +28,13 @@ const (
 var (
 	DEV_FRONT_URL  = os.Getenv("DEV_FRONT_URL")
 	PROD_FRONT_URL = os.Getenv("PROD_FRONT_URL")
+	ALLOW_LIST     = []string{"http://localhost:5173", "http://localhost:8080", `https://\S*-studioteatwo.vercel.app`, DEV_FRONT_URL, PROD_FRONT_URL}
 
 	LNC_PASSPRASE = os.Getenv("LNC_PASSPRASE")
 	LNC_MAILBOX   = os.Getenv("LNC_MAILBOX")
 
-	ALLOW_LIST = []string{"http://localhost:5173", "http://localhost:8080", `https://\S*-studioteatwo.vercel.app`, DEV_FRONT_URL, PROD_FRONT_URL}
+	N_SEC_KEY = os.Getenv("N_SEC_KEY")
+	relayList = []string{"wss://relay.damus.io", "wss://relay.snort.social", "wss://relay.primal.net", "wss://yabu.me", "wss://r.kojira.io"} // combine with user's relay list
 
 	appDataDir                    = btcutil.AppDataDir("l402", false)
 	defaultLogLevel               = "debug"
@@ -42,14 +45,13 @@ var (
 )
 
 func main() {
-	if LNC_PASSPRASE == "" || LNC_MAILBOX == "" {
-		log.Critical("not enough to ENV:", LNC_PASSPRASE, LNC_MAILBOX)
-	}
+	// TODO: goroutine
 
 	// put at first.
 	interceptor, err := signal.Intercept()
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 
 	// set logs
@@ -61,17 +63,20 @@ func main() {
 	)
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 	err = build.ParseAndSetDebugLevels(defaultLogLevel, logWriter)
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 
 	// Connect to LNC
 	errChan := make(chan error)
-	mint, err := connectLnc(errChan)
+	mint, err := setup(errChan)
 	if err != nil {
 		log.Critical(err)
+		os.Exit(1)
 	}
 	nch := &NewChallengeHandler{mint}
 	vh := &VerifyHandler{mint}
@@ -90,17 +95,19 @@ func main() {
 	handler := c.Handler(router)
 
 	log.Info("start server")
-	log.Critical(http.ListenAndServe(":8180", handler))
+	http.ListenAndServe(":8180", handler)
 
 	select {
 	case <-interceptor.ShutdownChannel():
-		log.Info("Received interrupt signal, shutting down aperture.")
+		log.Critical("Received interrupt signal, shutting down aperture.")
+		os.Exit(1)
 	case err := <-errChan:
-		log.Errorf("Error while running aperture: %v", err)
+		log.Critical("Error while running aperture: %v", err)
+		os.Exit(1)
 	}
 }
 
-func connectLnc(errChan chan error) (*mint.Mint, error) {
+func setup(errChan chan error) (*mint.Mint, error) {
 	fileInfo, err := os.Lstat(appDataDir)
 	if err != nil {
 		fileMode := fileInfo.Mode()
@@ -140,16 +147,21 @@ func connectLnc(errChan chan error) (*mint.Mint, error) {
 			"session: %w", err)
 	}
 
-	genInvoiceReq := func(price int64) (*lnrpc.Invoice, error) {
+	genInvoiceReq := func(price int64, params *nostr.NostrPublishParam) (*lnrpc.Invoice, error) {
 		return &lnrpc.Invoice{
-			Memo:  SERVICE_NAME,
-			Value: price,
+			Value:  price,
+			Expiry: 2592000, // 30 days
 		}, nil
+	}
+
+	nostrClient, err := nostr.NewNostrClient(N_SEC_KEY, SERVICE_NAME, relayList)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create nostr client: %w", err)
 	}
 
 	log.Info("LNC challlenge strat")
 	challenger, err := challenger.NewLNCChallenger(
-		session, lncStore, genInvoiceReq, errChan,
+		session, lncStore, genInvoiceReq, nostrClient, errChan,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start lnc "+

@@ -1,3 +1,9 @@
-.env*
+.env
+.env.*
+!.env.example
 memo.md
 *.log
+
+# golang
+vendor/
+simple-l402-server

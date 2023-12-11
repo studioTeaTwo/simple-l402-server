@@ -4,13 +4,13 @@ package main
 
 import (
 	"github.com/btcsuite/btclog"
-	"github.com/lightninglabs/aperture/auth"
-	"github.com/lightninglabs/aperture/lsat"
-	"github.com/lightninglabs/aperture/proxy"
 	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/signal"
+	"github.com/studioTeaTwo/aperture/auth"
+	"github.com/studioTeaTwo/aperture/lsat"
+	"github.com/studioTeaTwo/aperture/proxy"
 )
 
 const Subsystem = "L402" // Changed for simple-l402-server

@@ -8,8 +8,9 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/lightninglabs/aperture/lsat"
-	"github.com/lightninglabs/aperture/mint"
+	"github.com/studioTeaTwo/aperture/lsat"
+	"github.com/studioTeaTwo/aperture/mint"
+	"github.com/studioTeaTwo/aperture/nostr"
 )
 
 // create the macaroon & invoice
@@ -34,9 +35,22 @@ func (nc *NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	log.Infof("new challenge start: %#v", r.Header)
+	var p nostr.NostrPublishParam
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		log.Errorf("failed to parse parameters: %#v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// TODO: validate more
+	if p.UserNPubkey == "" || p.Slug == "" || p.Price == 0 {
+		log.Errorf("invalid parameters: %#v", p)
+		http.Error(w, "invalid parameters", http.StatusBadRequest)
+		return
+	}
 
-	res, macaroon, invoice := nc.mintAndFormat()
+	log.Infof("new challenge start: %#v", r.Header, p)
+
+	res, macaroon, invoice := nc.mintAndFormat(&p)
 	if !res.Result {
 		log.Errorf("new challenge failed: %#v", res.Reason)
 	} else {
@@ -85,16 +99,16 @@ func (v *VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (nc NewChallengeHandler) mintAndFormat() (res *Result, macaroon string, invoice string) {
+func (nc NewChallengeHandler) mintAndFormat(params *nostr.NostrPublishParam) (res *Result, macaroon string, invoice string) {
 	res = &Result{
 		Result: true,
 		Reason: "",
 	}
 
-	mac, invoice, err := nc.mint.MintLSAT(context.Background(), lsat.Service{
+	mac, invoice, err := nc.mint.MintLSAT(context.Background(), params, lsat.Service{
 		Name:  SERVICE_NAME,
 		Tier:  lsat.BaseTier,
-		Price: 1,
+		Price: params.Price,
 	})
 	if err != nil {
 		log.Error(err)

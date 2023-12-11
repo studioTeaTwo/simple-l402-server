@@ -5,7 +5,7 @@ package main
 import (
 	"context"
 
-	"github.com/lightninglabs/aperture/lsat"
+	"github.com/studioTeaTwo/aperture/lsat"
 )
 
 type mockServiceLimiter struct {
