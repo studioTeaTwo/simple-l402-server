@@ -26,16 +26,28 @@ const (
 )
 
 var (
+	// front server
 	DEV_FRONT_URL  = os.Getenv("DEV_FRONT_URL")
 	PROD_FRONT_URL = os.Getenv("PROD_FRONT_URL")
 	ALLOW_LIST     = []string{"http://localhost:5173", "http://localhost:8080", `https://\S*-studioteatwo.vercel.app`, DEV_FRONT_URL, PROD_FRONT_URL}
 
+	// Lightning node
 	LNC_PASSPRASE = os.Getenv("LNC_PASSPRASE")
 	LNC_MAILBOX   = os.Getenv("LNC_MAILBOX")
 
+	// Nostr
 	N_SEC_KEY = os.Getenv("N_SEC_KEY")
-	relayList = []string{"wss://relay.damus.io", "wss://relay.snort.social", "wss://relay.primal.net", "wss://yabu.me", "wss://r.kojira.io"} // combine with user's relay list
+	// combine with user's relay list later
+	relayList = []string{
+		"wss://relayable.org",
+		"wss://relay.damus.io",
+		"wss://relay.snort.social",
+		"wss://relay.primal.net",
+		"wss://yabu.me",
+		"wss://r.kojira.io",
+	}
 
+	// app settings
 	appDataDir                    = btcutil.AppDataDir("l402", false)
 	defaultLogLevel               = "debug"
 	defaultLogFilename            = "l402.log"
