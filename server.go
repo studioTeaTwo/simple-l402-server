@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Roasbeef/btcutil"
@@ -27,9 +28,9 @@ const (
 
 var (
 	// front server
-	DEV_FRONT_URL  = os.Getenv("DEV_FRONT_URL")
+	DEV_FRONT_URL  = strings.Split(os.Getenv("DEV_FRONT_URL"), ",")
 	PROD_FRONT_URL = os.Getenv("PROD_FRONT_URL")
-	ALLOW_LIST     = []string{"http://localhost:5173", "http://localhost:8080", `https://\S*-studioteatwo.vercel.app`, DEV_FRONT_URL, PROD_FRONT_URL}
+	ALLOW_LIST     = append([]string{"http://localhost:5173", "http://localhost:8080", PROD_FRONT_URL}, DEV_FRONT_URL...)
 
 	// Lightning node
 	LNC_PASSPRASE = os.Getenv("LNC_PASSPRASE")
@@ -95,13 +96,14 @@ func main() {
 
 	// Set up server
 	router := http.NewServeMux()
-	router.Handle("/createInvoice", nch)
+	router.Handle("/newchallenge", nch)
 	router.Handle("/verify", vh)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   ALLOW_LIST,
 		AllowedMethods:   []string{http.MethodGet, http.MethodPost, http.MethodDelete, http.MethodOptions},
 		AllowedHeaders:   []string{"*"},
+		ExposedHeaders:   []string{"*"},
 		AllowCredentials: true,
 	})
 	handler := c.Handler(router)
