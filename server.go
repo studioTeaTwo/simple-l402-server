@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Roasbeef/btcutil"
+	"github.com/jessevdk/go-flags"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/signal"
@@ -58,13 +60,30 @@ var (
 )
 
 func main() {
-	// TODO: goroutine
+	err := run()
 
+	// Unwrap our error and check whether help was requested from our flag
+	// library. If the error is not wrapped, Unwrap returns nil. It is
+	// still safe to check the type of this nil error.
+	flagErr, isFlagErr := errors.Unwrap(err).(*flags.Error)
+	isHelpErr := isFlagErr && flagErr.Type == flags.ErrHelp
+
+	// If we got a nil error, or help was requested, just exit.
+	if err == nil || isHelpErr {
+		fmt.Println("shutdown normally")
+		os.Exit(0)
+	}
+
+	// Print any other non-help related errors.
+	_, _ = fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
+}
+
+func run() error {
 	// put at first.
 	interceptor, err := signal.Intercept()
 	if err != nil {
-		log.Critical(err)
-		os.Exit(1)
+		return err
 	}
 
 	// set logs
@@ -75,21 +94,18 @@ func main() {
 		logFile, defaultMaxLogFileSize, defaultMaxLogFiles,
 	)
 	if err != nil {
-		log.Critical(err)
-		os.Exit(1)
+		return fmt.Errorf("unable to create log directory %w", err)
 	}
 	err = build.ParseAndSetDebugLevels(defaultLogLevel, logWriter)
 	if err != nil {
-		log.Critical(err)
-		os.Exit(1)
+		return fmt.Errorf("unable to create log level %w", err)
 	}
 
 	// Connect to LNC
 	errChan := make(chan error)
-	mint, err := setup(errChan)
+	mint, challenger, db, err := setup(errChan)
 	if err != nil {
-		log.Critical(err)
-		os.Exit(1)
+		return fmt.Errorf("unable to connect LNC %w", err)
 	}
 	nch := &NewChallengeHandler{mint}
 	vh := &VerifyHandler{mint}
@@ -113,21 +129,24 @@ func main() {
 
 	select {
 	case <-interceptor.ShutdownChannel():
-		log.Critical("Received interrupt signal, shutting down aperture.")
-		os.Exit(1)
+		log.Infof("received interrupt signal, shutting down aperture.")
+
 	case err := <-errChan:
-		log.Critical("Error while running aperture: %v", err)
-		os.Exit(1)
+		log.Errorf("error while running aperture: %v", err)
 	}
+
+	// TODO: clean up goroutine & WaitGroup
+	challenger.Stop()
+	return db.Close()
 }
 
-func setup(errChan chan error) (*mint.Mint, error) {
+func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteStore, error) {
 	fileInfo, err := os.Lstat(appDataDir)
 	if err != nil {
 		fileMode := fileInfo.Mode()
 		unixPerms := fileMode & os.ModePerm
 		if err := os.Mkdir(appDataDir, unixPerms); err != nil {
-			return nil, fmt.Errorf("unable to create directory "+
+			return nil, nil, nil, fmt.Errorf("unable to create directory "+
 				"mkdir: %w", err)
 		}
 	}
@@ -135,7 +154,7 @@ func setup(errChan chan error) (*mint.Mint, error) {
 	dbCfg := aperturedb.SqliteConfig{SkipMigrations: false, DatabaseFileName: appDataDir + "/" + defaultSqliteDatabaseFileName}
 	db, err := aperturedb.NewSqliteStore(&dbCfg)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create store "+
+		return nil, nil, nil, fmt.Errorf("unable to create store "+
 			"db: %w", err)
 	}
 	dbSecretTxer := aperturedb.NewTransactionExecutor(db,
@@ -157,7 +176,7 @@ func setup(errChan chan error) (*mint.Mint, error) {
 		false,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create lnc "+
+		return nil, nil, nil, fmt.Errorf("unable to create lnc "+
 			"session: %w", err)
 	}
 
@@ -170,7 +189,7 @@ func setup(errChan chan error) (*mint.Mint, error) {
 
 	nostrClient, err := nostr.NewNostrClient(N_SEC_KEY, SERVICE_NAME, relayList)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create nostr client: %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to create nostr client: %w", err)
 	}
 
 	log.Info("LNC challlenge strat")
@@ -178,7 +197,7 @@ func setup(errChan chan error) (*mint.Mint, error) {
 		session, lncStore, genInvoiceReq, nostrClient, errChan,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("unable to start lnc "+
+		return nil, nil, nil, fmt.Errorf("unable to start lnc "+
 			"challenger: %w", err)
 	}
 	log.Info("LNC challlenge succeeded ", challenger)
@@ -194,5 +213,5 @@ func setup(errChan chan error) (*mint.Mint, error) {
 		Now: time.Now,
 	})
 
-	return mint, nil
+	return mint, challenger, db, nil
 }
