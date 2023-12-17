@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/Roasbeef/btcutil"
 	"github.com/jessevdk/go-flags"
+	"github.com/lightninglabs/lndclient"
 	"github.com/lightningnetwork/lnd/build"
 	"github.com/lightningnetwork/lnd/lnrpc"
 	"github.com/lightningnetwork/lnd/signal"
@@ -35,8 +37,9 @@ var (
 	ALLOW_LIST     = append([]string{"http://localhost:5173", "http://localhost:8080", PROD_FRONT_URL}, DEV_FRONT_URL...)
 
 	// Lightning node
-	LNC_PASSPRASE = os.Getenv("LNC_PASSPRASE")
-	LNC_MAILBOX   = os.Getenv("LNC_MAILBOX")
+	HOW_TO_CONNECT = os.Getenv("HOW_TO_CONNECT")
+	LNC_PASSPRASE  = os.Getenv("LNC_PASSPRASE")
+	LNC_MAILBOX    = os.Getenv("LNC_MAILBOX")
 
 	// Nostr
 	N_SEC_KEY = os.Getenv("N_SEC_KEY")
@@ -163,22 +166,6 @@ func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteS
 		},
 	)
 	secretStore := aperturedb.NewSecretsStore(dbSecretTxer)
-	dbLNCTxer := aperturedb.NewTransactionExecutor(db,
-		func(tx *sql.Tx) aperturedb.LNCSessionsDB {
-			return db.WithTx(tx)
-		},
-	)
-	lncStore := aperturedb.NewLNCSessionsStore(dbLNCTxer)
-
-	session, err := lnc.NewSession(
-		LNC_PASSPRASE,
-		LNC_MAILBOX,
-		false,
-	)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("unable to create lnc "+
-			"session: %w", err)
-	}
 
 	genInvoiceReq := func(price int64, params *nostr.NostrPublishParam) (*lnrpc.Invoice, error) {
 		return &lnrpc.Invoice{
@@ -192,19 +179,66 @@ func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteS
 		return nil, nil, nil, fmt.Errorf("unable to create nostr client: %w", err)
 	}
 
-	log.Info("LNC challlenge strat")
-	challenger, err := challenger.NewLNCChallenger(
-		session, lncStore, genInvoiceReq, nostrClient, errChan,
+	var (
+		lncStore    lnc.Store
+		_challenger challenger.Challenger
 	)
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("unable to start lnc "+
-			"challenger: %w", err)
+
+	if HOW_TO_CONNECT == "lnc" {
+		dbLNCTxer := aperturedb.NewTransactionExecutor(db,
+			func(tx *sql.Tx) aperturedb.LNCSessionsDB {
+				return db.WithTx(tx)
+			},
+		)
+		lncStore = aperturedb.NewLNCSessionsStore(dbLNCTxer)
+
+		session, err := lnc.NewSession(
+			LNC_PASSPRASE,
+			LNC_MAILBOX,
+			false,
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to create lnc "+
+				"session: %w", err)
+		}
+
+		log.Info("LNC challlenge strat")
+		_challenger, err = challenger.NewLNCChallenger(
+			session, lncStore, genInvoiceReq, nostrClient, errChan,
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to start lnc "+
+				"challenger: %w", err)
+		}
+		log.Info("LNC challlenge succeeded ", _challenger)
+	} else {
+		log.Infof("Using lnd's authenticator config")
+
+		client, err := lndclient.NewBasicClient(
+			"localhost:10009", "~/.lnd/tls.cert",
+			"~/.lnd/data/chain/bitcoin/mainnet", "mainnet",
+			lndclient.MacFilename(
+				"invoice.macaroon",
+			),
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to create lnd client %w", err)
+		}
+
+		_challenger, err = challenger.NewLndChallenger(
+			client, genInvoiceReq, *nostr.MockNostrClient, context.Background,
+			errChan,
+		)
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("unable to start lnd "+
+				"challenger: %w", err)
+		}
+		log.Info("LND challlenge succeeded ", _challenger)
 	}
-	log.Info("LNC challlenge succeeded ", challenger)
 
 	mint := mint.New(&mint.Config{
 		Secrets:    secretStore,
-		Challenger: challenger,
+		Challenger: _challenger,
 		ServiceLimiter: &mockServiceLimiter{
 			capabilities: make(map[lsat.Service]lsat.Caveat),
 			constraints:  make(map[lsat.Service][]lsat.Caveat),
@@ -213,5 +247,5 @@ func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteS
 		Now: time.Now,
 	})
 
-	return mint, challenger, db, nil
+	return mint, _challenger, db, nil
 }
