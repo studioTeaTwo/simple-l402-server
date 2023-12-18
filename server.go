@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
@@ -214,9 +215,10 @@ func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteS
 	} else {
 		log.Infof("Using lnd's authenticator config")
 
+		usr, _ := user.Current()
 		client, err := lndclient.NewBasicClient(
-			"localhost:10009", "~/.lnd/tls.cert",
-			"~/.lnd/data/chain/bitcoin/mainnet", "mainnet",
+			"localhost:10009", usr.HomeDir+"/.lnd/tls.cert",
+			usr.HomeDir+"/.lnd/data/chain/bitcoin/mainnet", "mainnet",
 			lndclient.MacFilename(
 				"invoice.macaroon",
 			),
