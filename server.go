@@ -228,7 +228,7 @@ func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteS
 		}
 
 		_challenger, err = challenger.NewLndChallenger(
-			client, genInvoiceReq, *nostr.MockNostrClient, context.Background,
+			client, genInvoiceReq, *nostrClient, context.Background,
 			errChan,
 		)
 		if err != nil {
