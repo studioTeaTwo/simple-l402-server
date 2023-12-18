@@ -133,10 +133,10 @@ func run() error {
 
 	select {
 	case <-interceptor.ShutdownChannel():
-		log.Infof("received interrupt signal, shutting down aperture.")
+		log.Info("received interrupt signal, shutting down aperture.")
 
 	case err := <-errChan:
-		log.Errorf("error while running aperture: %v", err)
+		log.Errorf("error while running aperture: %#v", err)
 	}
 
 	// TODO: clean up goroutine & WaitGroup
@@ -211,9 +211,9 @@ func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteS
 			return nil, nil, nil, fmt.Errorf("unable to start lnc "+
 				"challenger: %w", err)
 		}
-		log.Info("LNC challlenge succeeded ", _challenger)
+		log.Infof("LNC challlenge succeeded %#v", _challenger)
 	} else {
-		log.Infof("Using lnd's authenticator config")
+		log.Info("Using lnd's authenticator config")
 
 		usr, _ := user.Current()
 		client, err := lndclient.NewBasicClient(
@@ -235,7 +235,7 @@ func setup(errChan chan error) (*mint.Mint, mint.Challenger, *aperturedb.SqliteS
 			return nil, nil, nil, fmt.Errorf("unable to start lnd "+
 				"challenger: %w", err)
 		}
-		log.Info("LND challlenge succeeded ", _challenger)
+		log.Infof("LND challlenge succeeded %#v", _challenger)
 	}
 
 	mint := mint.New(&mint.Config{

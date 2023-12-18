@@ -54,7 +54,7 @@ func (nc *NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	if !res.Result {
 		log.Errorf("new challenge failed: %#v", res.Reason)
 	} else {
-		log.Info("new challenge succeeded ", macaroon, invoice)
+		log.Infof("new challenge succeeded %v %v", macaroon, invoice)
 
 		challenge := "L402 macaroon=" + macaroon + " invoice=" + invoice
 		w.Header().Set("WWW-Authenticate", challenge)
@@ -117,7 +117,7 @@ func (nc NewChallengeHandler) mintAndFormat(params *nostr.NostrPublishParam) (re
 		return res, "", ""
 	}
 
-	log.Infof("macaroorn ", mac)
+	log.Infof("macaroorn %#v", mac)
 	macBytes, err := mac.MarshalBinary()
 	if err != nil {
 		log.Error(err)
@@ -134,7 +134,7 @@ func verify(header *http.Header, v *VerifyHandler) error {
 	mac, preimage, err := lsat.FromHeader(header)
 	log.Infof("header %#v", header.Get("Authorization"))
 	if err != nil {
-		return fmt.Errorf("deny: %v", err)
+		return fmt.Errorf("deny: %w", err)
 	}
 	verificationParams := &mint.VerificationParams{
 		Macaroon:      mac,
@@ -143,7 +143,7 @@ func verify(header *http.Header, v *VerifyHandler) error {
 	}
 	err = v.mint.VerifyLSAT(context.Background(), verificationParams)
 	if err != nil {
-		return fmt.Errorf("deny: %v", err)
+		return fmt.Errorf("deny: %w", err)
 	}
 	return nil
 }
