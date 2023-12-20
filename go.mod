@@ -5,7 +5,7 @@ go 1.21.4
 require (
 	github.com/Roasbeef/btcutil v0.0.0-20180406014609-dfb640c57141
 	github.com/lightningnetwork/lnd v0.16.0-beta
-	github.com/studioTeaTwo/aperture v0.0.1-20231218163338-fca32d2bc32f
+	github.com/studioTeaTwo/aperture v0.0.1-20231220073209-e0e398c0b505
 )
 
 require (

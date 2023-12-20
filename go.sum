@@ -692,8 +692,8 @@ github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
-github.com/studioTeaTwo/aperture v0.0.1-20231218163338-fca32d2bc32f h1:g3ip6aKG7tPynOFnBdvK4Z+A4jgiLtTgEtV65f6EbXU=
-github.com/studioTeaTwo/aperture v0.0.1-20231218163338-fca32d2bc32f/go.mod h1:wSDLRqn+e1tdVm5Wk6uiyhT4G9VBxJ/7Ykss+xOcFv0=
+github.com/studioTeaTwo/aperture v0.0.1-20231220073209-e0e398c0b505 h1:Xr23Uh0CUrEtVzSlucnWUrmanfChftbPYDYBSyrLfpU=
+github.com/studioTeaTwo/aperture v0.0.1-20231220073209-e0e398c0b505/go.mod h1:wSDLRqn+e1tdVm5Wk6uiyhT4G9VBxJ/7Ykss+xOcFv0=
 github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635/go.mod h1:hkRG7XYTFWNJGYcbNJQlaLq0fg1yr4J4t/NcTQtrfww=
 github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 h1:epCh84lMvA70Z7CTTCmYQn2CKbY8j86K7/FAIr141uY=
 github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7/go.mod h1:q4W45IWZaF22tdD+VEXcAWRA037jwmWEB5VWYORlTpc=
