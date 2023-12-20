@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/user"
@@ -118,6 +119,9 @@ func run() error {
 	router := http.NewServeMux()
 	router.Handle("/newchallenge", nch)
 	router.Handle("/verify", vh)
+	router.HandleFunc("/healthcheck", func(w http.ResponseWriter, _ *http.Request) {
+		io.WriteString(w, "Hello\n")
+	})
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   ALLOW_LIST,
