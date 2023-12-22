@@ -68,13 +68,13 @@ func (nc *NewChallengeHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 }
 
 func (v *VerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Infof("verify start: %#v", r.Header)
+
 	if result := isAllow(&r.Header); !result {
 		w.WriteHeader(http.StatusForbidden)
 		json.NewEncoder(w).Encode("")
 		return
 	}
-
-	log.Infof("verify start: %#v", r.Header)
 
 	res := &Result{
 		Result: true,
@@ -149,12 +149,18 @@ func verify(header *http.Header, v *VerifyHandler) error {
 }
 
 func isAllow(h *http.Header) bool {
+	orgin := h.Get("Origin")
 	for _, v := range ALLOW_LIST {
 		if v == "" {
 			continue
 		}
 		r := regexp.MustCompile(v)
-		if matched := r.MatchString(h.Get("Origin")); matched {
+		if matched := r.MatchString(orgin); matched {
+			return true
+		}
+		// preveiw branch
+		r = regexp.MustCompile(`https://\S*-studioteatwo.vercel.app`)
+		if matched := r.MatchString(orgin); matched {
 			return true
 		}
 	}
